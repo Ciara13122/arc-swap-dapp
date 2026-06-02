@@ -1,6 +1,3 @@
-import { AppKit } from "@circle-fin/app-kit";
-import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
-
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -10,22 +7,24 @@ export default async function handler(req, res) {
   try {
     const { tokenIn, tokenOut, amountIn, kitKey } = req.body;
 
-    // Get a quote only (no signing) — returns estimated output
-    const kit = new AppKit();
-    const quote = await kit.getSwapQuote({
-      chain: "Arc_Testnet",
-      tokenIn,
-      tokenOut,
-      amountIn: String(amountIn),
-      config: { kitKey },
+    // Use Circle's Swap Kit API directly
+    const { SwapKit } = await import("@circle-fin/swap-kit");
+    const kit = new SwapKit({ apiKey: kitKey });
+
+    const quote = await kit.getQuote({
+      inputToken: tokenIn === "USDC"
+        ? "0x3600000000000000000000000000000000000000"
+        : "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
+      outputToken: tokenOut === "USDC"
+        ? "0x3600000000000000000000000000000000000000"
+        : "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
+      inputAmount: String(amountIn),
+      chain: "ARC-TESTNET",
     });
 
-    return res.status(200).json({
-      amountOut: quote.amountOut,
-      rate: quote.rate,
-      fees: quote.fees,
-    });
+    return res.status(200).json(quote);
   } catch (e) {
+    console.error("Swap error:", e);
     return res.status(500).json({ error: e.message });
   }
 }
