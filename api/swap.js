@@ -1,8 +1,3 @@
-import { AppKit } from "@circle-fin/app-kit";
-import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
-
-export const config = { runtime: "nodejs" };
-
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -12,25 +7,36 @@ export default async function handler(req, res) {
   try {
     const { tokenIn, tokenOut, amountIn, kitKey, fromAddress } = req.body;
 
-    // Use a throwaway wallet just to get a quote
-    const adapter = createViemAdapterFromPrivateKey({
-      privateKey: "0x0000000000000000000000000000000000000000000000000000000000000001",
+    const tokenMap = {
+      USDC: "0x3600000000000000000000000000000000000000",
+      EURC: "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
+    };
+
+    const body = {
+      inputToken: tokenMap[tokenIn] || tokenIn,
+      outputToken: tokenMap[tokenOut] || tokenOut,
+      inputAmount: String(amountIn),
+      fromAddress: fromAddress || "0x0000000000000000000000000000000000000001",
+      chainId: "5042002",
+    };
+
+    const r = await fetch("https://api.circle.com/v1/w3s/swap/routes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${kitKey}`,
+        "X-Kit-Key": kitKey,
+      },
+      body: JSON.stringify(body),
     });
 
-    const kit = new AppKit();
-    const result = await kit.swap({
-      from: { adapter, chain: "Arc_Testnet" },
-      tokenIn,
-      tokenOut,
-      amountIn: String(amountIn),
-      config: { kitKey, dryRun: true },
-    });
-
-    return res.status(200).json({
-      amountOut: result.amountOut,
-      fees: result.fees,
-      quoteOnly: true,
-    });
+    const text = await r.text();
+    try {
+      const data = JSON.parse(text);
+      return res.status(r.status).json(data);
+    } catch {
+      return res.status(500).json({ error: "Circle API returned: " + text.slice(0, 200) });
+    }
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
