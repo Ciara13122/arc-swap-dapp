@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 
 const ARC_TESTNET = {
-  chainId: "0x13B2", // 5042 decimal
+  chainId: "0x4CE812", // 5042 decimal
   chainName: "Arc Testnet",
   rpcUrls: ["https://rpc.testnet.arc.network"],
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
