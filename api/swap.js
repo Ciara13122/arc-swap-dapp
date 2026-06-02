@@ -1,43 +1,58 @@
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") return res.status(200).end();
+import { useState, useCallback } from "react";
 
-  try {
-    const { tokenIn, tokenOut, amountIn, kitKey, fromAddress } = req.body;
+export function useSwap() {
+  const [loading, setLoading] = useState(false);
+  const [txResult, setTxResult] = useState(null);
+  const [error, setError] = useState(null);
 
-    const tokenMap = {
-      USDC: "0x3600000000000000000000000000000000000000",
-      EURC: "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
-    };
-
-    const body = {
-      inputToken: tokenMap[tokenIn] || tokenIn,
-      outputToken: tokenMap[tokenOut] || tokenOut,
-      inputAmount: String(amountIn),
-      fromAddress: fromAddress || "0x0000000000000000000000000000000000000001",
-      chainId: "5042002",
-    };
-
-    const r = await fetch("https://api.circle.com/v1/w3s/swap/routes", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${kitKey}`,
-        "X-Kit-Key": kitKey,
-      },
-      body: JSON.stringify(body),
-    });
-
-    const text = await r.text();
-    try {
-      const data = JSON.parse(text);
-      return res.status(r.status).json(data);
-    } catch {
-      return res.status(500).json({ error: "Circle API returned: " + text.slice(0, 200) });
+  const executeSwap = useCallback(async ({ tokenIn, tokenOut, amountIn, kitKey, provider }) => {
+    const prov = provider || window.ethereum;
+    if (!prov) throw new Error("No wallet provider found.");
+    if (!kitKey || kitKey.trim() === "") {
+      throw new Error("A Kit Key is required.\n\nGo to https://console.circle.com → Kit Keys → copy your key.");
     }
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
+
+    setLoading(true);
+    setError(null);
+    setTxResult(null);
+
+    try {
+      const [{ AppKit }, { createViemAdapterFromProvider }] = await Promise.all([
+        import("@circle-fin/app-kit"),
+        import("@circle-fin/adapter-viem-v2"),
+      ]);
+
+      const kit = new AppKit();
+
+      const adapter = await createViemAdapterFromProvider({
+        provider: prov,
+      });
+
+      const result = await kit.swap({
+        from: { adapter, chain: "Arc_Testnet" },
+        tokenIn,
+        tokenOut,
+        amountIn: String(amountIn),
+        config: { kitKey },
+      });
+
+      setTxResult({
+        txHash: result.txHash,
+        explorerUrl: result.explorerUrl,
+        amountOut: result.amountOut,
+        fees: result.fees,
+      });
+      return result;
+    } catch (err) {
+      const msg = err?.message || "Swap failed.";
+      setError(msg);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const reset = useCallback(() => { setTxResult(null); setError(null); }, []);
+
+  return { executeSwap, loading, txResult, error, reset };
 }
