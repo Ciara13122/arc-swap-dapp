@@ -1,58 +1,39 @@
-import { useState, useCallback } from "react";
+import { AppKit } from "@circle-fin/app-kit";
+import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
 
-export function useSwap() {
-  const [loading, setLoading] = useState(false);
-  const [txResult, setTxResult] = useState(null);
-  const [error, setError] = useState(null);
+export default async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.status(200).end();
 
-  const executeSwap = useCallback(async ({ tokenIn, tokenOut, amountIn, kitKey, provider }) => {
-    const prov = provider || window.ethereum;
-    if (!prov) throw new Error("No wallet provider found.");
-    if (!kitKey || kitKey.trim() === "") {
-      throw new Error("A Kit Key is required.\n\nGo to https://console.circle.com → Kit Keys → copy your key.");
-    }
+  try {
+    const { tokenIn, tokenOut, amountIn, kitKey } = req.body;
 
-    setLoading(true);
-    setError(null);
-    setTxResult(null);
+    // Dummy key only used to create adapter for quote — never holds real funds
+    const adapter = createViemAdapterFromPrivateKey({
+      privateKey:
+        "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+    });
 
-    try {
-      const [{ AppKit }, { createViemAdapterFromProvider }] = await Promise.all([
-        import("@circle-fin/app-kit"),
-        import("@circle-fin/adapter-viem-v2"),
-      ]);
+    const kit = new AppKit();
 
-      const kit = new AppKit();
+    const result = await kit.swap({
+      from: { adapter, chain: "Arc_Testnet" },
+      tokenIn,
+      tokenOut,
+      amountIn: String(amountIn),
+      config: { kitKey },
+    });
 
-      const adapter = await createViemAdapterFromProvider({
-        provider: prov,
-      });
-
-      const result = await kit.swap({
-        from: { adapter, chain: "Arc_Testnet" },
-        tokenIn,
-        tokenOut,
-        amountIn: String(amountIn),
-        config: { kitKey },
-      });
-
-      setTxResult({
-        txHash: result.txHash,
-        explorerUrl: result.explorerUrl,
-        amountOut: result.amountOut,
-        fees: result.fees,
-      });
-      return result;
-    } catch (err) {
-      const msg = err?.message || "Swap failed.";
-      setError(msg);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const reset = useCallback(() => { setTxResult(null); setError(null); }, []);
-
-  return { executeSwap, loading, txResult, error, reset };
+    return res.status(200).json({
+      amountOut: result.amountOut,
+      txHash: result.txHash,
+      explorerUrl: result.explorerUrl,
+      fees: result.fees,
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: e.message });
+  }
 }
