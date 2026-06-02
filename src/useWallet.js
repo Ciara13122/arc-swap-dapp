@@ -51,7 +51,7 @@ export function useWallet() {
   const [status, setStatus]             = useState("disconnected");
   // disconnected | connecting | connected | wrong_network
 
-  const isOnArc = chainId === ARC_TESTNET.chainId;
+  const isOnArc = chainId?.toLowerCase() === ARC_TESTNET.chainId.toLowerCase();
 
   // ── internal helper ──────────────────────────────────────────────────────
   const connectWithProvider = useCallback(async (prov, type) => {
@@ -80,7 +80,7 @@ export function useWallet() {
 
       const currentChain = await prov.request({ method: "eth_chainId" });
       setChainId(currentChain);
-      setStatus(currentChain === ARC_TESTNET.chainId ? "connected" : "wrong_network");
+      setStatus(currentChain?.toLowerCase() === ARC_TESTNET.chainId.toLowerCase() ? "connected" : "wrong_network");
     } catch (err) {
       console.error(`${type} connection error:`, err);
       setStatus("disconnected");
@@ -148,7 +148,7 @@ export function useWallet() {
 
     const handleChainChanged = (chain) => {
       setChainId(chain);
-      setStatus(chain === ARC_TESTNET.chainId ? "connected" : "wrong_network");
+      setStatus(chain?.toLowerCase() === ARC_TESTNET.chainId.toLowerCase() ? "connected" : "wrong_network");
     };
 
     provider.on("accountsChanged", handleAccountsChanged);
