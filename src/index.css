@@ -1,0 +1,70 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #080a0f;
+  --bg-panel: #0d1117;
+  --bg-input: #111820;
+  --border: #1e2d3d;
+  --border-bright: #2a4060;
+  --accent: #00d4ff;
+  --accent2: #7b61ff;
+  --accent3: #00ff87;
+  --text: #e8f0fe;
+  --text-dim: #5a7a9a;
+  --text-mid: #8aaccc;
+  --error: #ff4d6d;
+  --success: #00ff87;
+  --warn: #ffb347;
+  --font-mono: "Space Mono", monospace;
+  --font-sans: "Syne", sans-serif;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+input, select {
+  font-family: var(--font-mono);
+  outline: none;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-bright);
+  border-radius: 2px;
+}
